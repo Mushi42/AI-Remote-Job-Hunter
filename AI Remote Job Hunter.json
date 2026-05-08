@@ -1,0 +1,489 @@
+{
+  "name": "AI Remote Job Hunter FINAL STABLE",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "id": "4cd7bdf2-43cf-4d3d-af93-664b8c04b826",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        720,
+        -304
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://remoteok.com/remote-jobs.json",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "8a84495b-05ed-49c3-88b9-1d42085a92bf",
+      "name": "RemoteOK Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        944,
+        -592
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "https://remotive.com/api/remote-jobs",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "b7c50261-1285-4e10-bbf2-974f57d95ab8",
+      "name": "Remotive Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        944,
+        -400
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "https://weworkremotely.com/remote-jobs.rss",
+        "options": {}
+      },
+      "id": "c210ca1e-7050-4c4d-972a-a8d3b219a84f",
+      "name": "WWR RSS Jobs",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [
+        944,
+        -208
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "https://api.adzuna.com/v1/api/jobs/us/search/1?app_id=YOUR_ADZUNA_APP_ID&app_key=YOUR_ADZUNA_APP_KEY&what=react%20developer&where=remote&results_per_page=50",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "6bb30a3d-2902-452e-8a9b-991d6f3d408d",
+      "name": "Adzuna Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        944,
+        -16
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {},
+      "id": "28a01033-d9d6-4aad-836e-924c5f697725",
+      "name": "Merge 1",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        1168,
+        -496
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "fd6a84e4-7aa1-4ce8-9c94-df1cbf085c95",
+      "name": "Merge 2",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        1168,
+        -112
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "b0dbcfa0-640e-43d3-8782-cdb4bf0ee7e5",
+      "name": "Merge 3",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        1392,
+        -304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function stripHtml(html = '') {\n  return String(html)\n    .replace(/<[^>]*>/g, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\nconst inputItems = $input.all();\nconst allJobs = [];\n\nfor (const item of inputItems) {\n\n  const data = item.json;\n\n  if (Array.isArray(data)) {\n\n    for (const job of data) {\n\n      if (!job.position) continue;\n\n      allJobs.push({\n        title: job.position || '',\n        company: job.company || '',\n        location: job.location || 'Remote',\n        url: (job.url || '').split('?')[0].trim(),\n        apply_url: job.apply_url || '',\n        description: stripHtml(job.description || ''),\n        tags: Array.isArray(job.tags)\n          ? job.tags.join(', ')\n          : '',\n        salary:\n          job.salary_min && job.salary_max\n            ? `${job.salary_min} - ${job.salary_max}`\n            : '',\n        source: 'RemoteOK',\n        posted_at: job.date || job.iso_date || null\n      });\n\n    }\n\n  }\n\n  if (data.jobs) {\n\n    for (const job of data.jobs) {\n\n      allJobs.push({\n        title: job.title || '',\n        company: job.company_name || '',\n        location: job.candidate_required_location || 'Remote',\n        url: (job.url || '').split('?')[0].trim(),\n        apply_url: job.url || '',\n        description: stripHtml(job.description || ''),\n        tags: Array.isArray(job.tags)\n          ? job.tags.join(', ')\n          : '',\n        salary: job.salary || '',\n        source: 'Remotive',\n        posted_at: job.publication_date || null\n      });\n\n    }\n\n  }\n\n  if (data.title && data.link) {\n\n    allJobs.push({\n      title: data.title || '',\n      company: '',\n      location: 'Remote',\n      url: (data.link || '').split('?')[0].trim(),\n      apply_url: data.link || '',\n      description: stripHtml(data.contentSnippet || data.content || ''),\n      tags: '',\n      salary: '',\n      source: 'RSS',\n      posted_at: data.isoDate || data.pubDate || null\n    });\n\n  }\n\n  if (data.results) {\n\n    for (const job of data.results) {\n\n      allJobs.push({\n        title: job.title || '',\n        company: job.company?.display_name || '',\n        location: job.location?.display_name || 'Remote',\n        url: (job.redirect_url || '').split('?')[0].trim(),\n        apply_url: job.redirect_url || '',\n        description: stripHtml(job.description || ''),\n        tags: job.category?.label || '',\n        salary:\n          job.salary_min && job.salary_max\n            ? `${job.salary_min} - ${job.salary_max}`\n            : '',\n        source: 'Adzuna',\n        posted_at: job.created || null\n      });\n\n    }\n\n  }\n\n}\n\nconst allowed = [\n  'react',\n  'next.js',\n  'nextjs',\n  'mern',\n  'node',\n  'node.js',\n  'nestjs',\n  'react native',\n  'typescript',\n  'javascript',\n  'fullstack',\n  'frontend',\n  'backend',\n  'software engineer',\n  'software developer',\n  'web developer',\n  'ai engineer',\n  'automation',\n  'openai',\n  'llm',\n  'n8n',\n  'saas'\n];\n\nconst blocked = [\n  'legal',\n  'lawyer',\n  'attorney',\n  'sales',\n  'marketing',\n  'hr',\n  'finance',\n  'recruiter',\n  'designer',\n  'seo',\n  'writer',\n  'copywriter',\n  'account executive',\n  'customer support'\n];\n\nconst seen = new Set();\nconst clean = [];\nconst now = Date.now();\nconst maxAgeHours = 72;\n\nfor (const job of allJobs) {\n\n  if (!job.title || !job.url) continue;\n\n  if (job.source !== 'RSS') {\n\n    const rawDate = job.posted_at || null;\n\n    if (rawDate) {\n\n      const parsedDate = new Date(rawDate).getTime();\n\n      if (!isNaN(parsedDate)) {\n\n        const ageHours =\n          (now - parsedDate) /\n          (1000 * 60 * 60);\n\n        if (ageHours > maxAgeHours)\n          continue;\n\n      }\n\n    }\n\n  }\n\n  const text = `${job.title} ${job.company} ${job.description} ${job.tags}`\n    .toLowerCase();\n\n  const hasAllowed =\n    allowed.some(keyword =>\n      text.includes(keyword.toLowerCase())\n    );\n\n  const hasBlocked =\n    blocked.some(keyword =>\n      text.includes(keyword.toLowerCase())\n    );\n\n  if (!hasAllowed || hasBlocked)\n    continue;\n\n  const key = job.url.toLowerCase();\n\n  if (seen.has(key)) continue;\n\n  seen.add(key);\n\n  clean.push({\n    json: {\n      ...job,\n      description: job.description.slice(0, 2000),\n      status: 'new',\n      created_at: new Date().toISOString()\n    }\n  });\n\n  if (clean.length >= 200)\n    break;\n\n}\n\nreturn clean;"
+      },
+      "id": "47c13e36-e288-4b2e-9ba6-d40f6949a9d3",
+      "name": "Normalize Filter Deduplicate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1616,
+        -304
+      ]
+    },
+    {
+      "parameters": {
+        "maxItems": 100
+      },
+      "id": "e97f58b7-2ea2-496d-86fc-cee1f6081c57",
+      "name": "Limit",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        1840,
+        -304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_OPENROUTER_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"openrouter/free\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are an expert technical recruiter. Return only valid JSON.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Score this job from 1-100 for MERN, React Native, Fullstack, AI Automation and n8n developer. Return ONLY valid JSON in this format: {\\\"score\\\":85,\\\"reason\\\":\\\"Strong React fit\\\",\\\"email_subject\\\":\\\"Application for React Role\\\",\\\"email_body\\\":\\\"Short human application email\\\"}. Job title: {{$json.title}}. Company: {{$json.company}}. Description: {{$json.description}}\"\n    }\n  ]\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "01154e0c-8e06-4697-8a51-d0c140fd095c",
+      "name": "OpenRouter Score And Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2064,
+        -304
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item, index) => {\n\n  let parsed = {\n    score: 0,\n    reason: '',\n    email_subject: '',\n    email_body: ''\n  };\n\n  try {\n\n    const raw =\n      item.json.choices?.[0]?.message?.content || '';\n\n    const cleaned = raw\n      .replace(/```json/g, '')\n      .replace(/```/g, '')\n      .trim();\n\n    parsed = JSON.parse(cleaned);\n\n  } catch (e) {}\n\n  const original = $('Limit').all()[index].json;\n\n  return {\n    json: {\n      ...original,\n      score: Number(parsed.score || 0),\n      reason: parsed.reason || '',\n      email_subject: parsed.email_subject || '',\n      email_body: parsed.email_body || '',\n      ai_processed_at: new Date().toISOString()\n    }\n  };\n\n});"
+      },
+      "id": "6e1164d2-c12a-46ba-96ed-e107a5303f2c",
+      "name": "Parse AI Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2288,
+        -304
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.score}}",
+              "operation": "largerEqual",
+              "value2": 70
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a6809d53-03d1-41c5-bcff-4cd3cf087a7e",
+      "name": "High Match?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2960,
+        -304
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "findOneAndUpdate",
+        "collection": "jobs",
+        "updateKey": "url",
+        "fields": "title,company,company_name,industry,company_summary,website,linkedin,careers_url,hr_email_guess,possible_hr_emails,location,url,apply_url,description,tags,source,salary,status,created_at,score,reason,email_subject,email_body,ai_processed_at,enriched_at,updated_at",
+        "upsert": true,
+        "options": {}
+      },
+      "id": "d3d77f76-8156-4ac3-b2ab-102adb52d38d",
+      "name": "Save To MongoDB",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        3184,
+        -304
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "YOUR_MONGODB_CREDENTIAL_ID",
+          "name": "MongoDB account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item, index) => {\n\n  let parsed = {};\n\n  try {\n\n    const raw =\n      item.json.choices?.[0]\n      ?.message?.content || '';\n\n    const cleaned = raw\n      .replace(/```json/g, '')\n      .replace(/```/g, '')\n      .trim();\n\n    parsed = JSON.parse(cleaned);\n\n  } catch (e) {\n\n    parsed = {};\n\n  }\n\n  const original =\n    $('Parse AI Output')\n      .all()[index]?.json || {};\n\n  const website =\n    parsed.website || '';\n\n  const domain = website\n    .replace('https://', '')\n    .replace('http://', '')\n    .replace('www.', '')\n    .split('/')[0]\n    .trim();\n\n  return {\n    json: {\n\n      ...original,\n\n      company_name:\n        parsed.company_name ||\n        original.company ||\n        '',\n\n      industry:\n        parsed.industry || '',\n\n      company_summary:\n        parsed.company_summary || '',\n\n      careers_url:\n        parsed.careers_url || '',\n\n      website,\n\n      linkedin:\n        parsed.linkedin || '',\n\n      hr_email_guess:\n        parsed.hr_email_guess || '',\n\n      possible_hr_emails:\n        domain\n          ? [\n              `careers@${domain}`,\n              `jobs@${domain}`,\n              `recruiting@${domain}`,\n              `hr@${domain}`,\n              `talent@${domain}`\n            ]\n          : [],\n\n      enriched_at:\n        new Date().toISOString()\n\n    }\n  };\n\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2736,
+        -304
+      ],
+      "id": "e5f586db-32d3-4cca-81c8-f77ca3fdea89",
+      "name": "Company Research AI"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_OPENROUTER_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"openrouter/free\",\n\n  \"messages\": [\n\n    {\n      \"role\": \"system\",\n\n      \"content\":\n      \"You are a company research assistant. Return only valid JSON.\"\n    },\n\n    {\n      \"role\": \"user\",\n\n      \"content\":\n      \"Analyze this job and identify the REAL company. If company missing infer from description. Return JSON only in this format: {\\\"company_name\\\":\\\"\\\",\\\"industry\\\":\\\"\\\",\\\"company_summary\\\":\\\"\\\",\\\"careers_url\\\":\\\"\\\",\\\"website\\\":\\\"\\\",\\\"linkedin\\\":\\\"\\\",\\\"hr_email_guess\\\":\\\"\\\"}. Job title: {{$json.title}}. Existing company: {{$json.company}}. Description: {{$json.description}}\"\n    }\n\n  ]\n\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2512,
+        -304
+      ],
+      "id": "adecc3a5-3b3c-4e5f-9e0e-feb8a76dfc03",
+      "name": "HTTP Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "RemoteOK Jobs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Remotive Jobs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "WWR RSS Jobs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Adzuna Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RemoteOK Jobs": {
+      "main": [
+        [
+          {
+            "node": "Merge 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remotive Jobs": {
+      "main": [
+        [
+          {
+            "node": "Merge 1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "WWR RSS Jobs": {
+      "main": [
+        [
+          {
+            "node": "Merge 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Adzuna Jobs": {
+      "main": [
+        [
+          {
+            "node": "Merge 2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge 1": {
+      "main": [
+        [
+          {
+            "node": "Merge 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge 2": {
+      "main": [
+        [
+          {
+            "node": "Merge 3",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge 3": {
+      "main": [
+        [
+          {
+            "node": "Normalize Filter Deduplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Filter Deduplicate": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "OpenRouter Score And Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Score And Email": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Output": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "High Match?": {
+      "main": [
+        [
+          {
+            "node": "Save To MongoDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Company Research AI": {
+      "main": [
+        [
+          {
+            "node": "High Match?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Company Research AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "cff6b7ee-25f8-4ab9-b72f-3caac1d3e9f9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_N8N_INSTANCE_ID"
+  },
+  "id": "ATKNnJKkaBSbx13i",
+  "tags": []
+}
